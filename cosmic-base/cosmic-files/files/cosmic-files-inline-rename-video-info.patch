@@ -50,7 +50,7 @@ index 375c1d9..d883b11 100644
                              self.context_page = ContextPage::NetworkDrive;
                              self.set_show_context(true);
 diff --git a/src/item/mod.rs b/src/item/mod.rs
-index 285ea7f..fe92a4a 100644
+index 285ea7f..5b8f748 100644
 --- a/src/item/mod.rs
 +++ b/src/item/mod.rs
 @@ -338,6 +338,7 @@ pub fn item_from_gvfs_info(path: PathBuf, file_info: gio::FileInfo, sizes: IconS
@@ -93,13 +93,48 @@ index 285ea7f..fe92a4a 100644
          let mut settings = Vec::new();
          if let Some(mime_app_cache) = mime_app_cache_opt {
              let mime_apps = mime_app_cache.get_apps_for_mime(&self.mime, false);
-@@ -891,3 +901,97 @@ pub enum SearchItem {
+@@ -891,3 +901,132 @@ pub enum SearchItem {
      Path(PathBuf, String, fs::Metadata),
      Trash(TrashItem, TrashItemSize),
  }
 +
 +/// DepOS: read video details with ffprobe (resolution, length, codecs, HDR, audio,
 +/// subtitles). Returns label/value pairs for the preview pane; None if ffprobe fails.
++/// DepOS: number of frames in the hover sequence (10 %, 20 %, … 90 %).
++pub const HOVER_FRAMES: usize = 9;
++
++/// DepOS: one frame of the hover sequence, cached under ~/.cache/thumbnails/depos-sequence.
++pub fn video_frame(path: &std::path::Path, n: usize) -> Option<std::path::PathBuf> {
++    use std::hash::{Hash, Hasher};
++    let mut h = std::collections::hash_map::DefaultHasher::new();
++    path.hash(&mut h);
++    std::fs::metadata(path).ok()?.modified().ok().hash(&mut h);
++    let dir = dirs::cache_dir()?.join("thumbnails/depos-sequence").join(format!("{:016x}", h.finish()));
++    let out = dir.join(format!("{n:02}.jpg"));
++    if out.exists() {
++        return Some(out);
++    }
++    std::fs::create_dir_all(&dir).ok()?;
++    let tmp = dir.join(format!("{n:02}.tmp.jpg"));
++    let ok = std::process::Command::new("ffmpegthumbnailer")
++        .arg("-i")
++        .arg(path)
++        .arg("-o")
++        .arg(&tmp)
++        .args(["-s", "512", "-q", "8", "-c", "jpeg", "-t"])
++        .arg(format!("{}%", 10 * (n + 1)))
++        .stdout(std::process::Stdio::null())
++        .stderr(std::process::Stdio::null())
++        .status()
++        .ok()?
++        .success();
++    if !ok {
++        return None;
++    }
++    std::fs::rename(&tmp, &out).ok()?;
++    Some(out)
++}
++
 +pub fn video_info(path: &std::path::Path) -> Option<Vec<(String, String)>> {
 +    let output = std::process::Command::new("ffprobe")
 +        .args([
@@ -270,7 +305,7 @@ index 481cecc..6517aed 100644
              state: ItemState::default(),
          });
 diff --git a/src/tab.rs b/src/tab.rs
-index b226b39..003da4c 100644
+index b226b39..b9ff8ed 100644
 --- a/src/tab.rs
 +++ b/src/tab.rs
 @@ -349,6 +349,7 @@ pub enum Command {
@@ -299,7 +334,17 @@ index b226b39..003da4c 100644
      ToggleSort(HeadingOptions),
      Drop(Option<(Location, ClipboardPaste)>),
      DndHover(Location),
-@@ -464,6 +469,8 @@ pub enum HeadingOptions {
+@@ -428,6 +433,9 @@ pub enum Message {
+     ZoomOut,
+     HighlightDeactivate(usize),
+     HighlightActivate(usize),
++    // DepOS: Dolphin-style frame sequence while hovering a video
++    HoverFrames(PathBuf, Vec<PathBuf>),
++    HoverSeqTick,
+     DirectorySize(PathBuf, DirSize),
+     #[cfg(feature = "gvfs")]
+     DirectoryChildren(PathBuf, usize),
+@@ -464,6 +472,8 @@ pub enum HeadingOptions {
      Modified,
      Size,
      TrashedOn,
@@ -308,7 +353,7 @@ index b226b39..003da4c 100644
  }
  
  impl fmt::Display for HeadingOptions {
-@@ -473,6 +480,7 @@ impl fmt::Display for HeadingOptions {
+@@ -473,6 +483,7 @@ impl fmt::Display for HeadingOptions {
              Self::Modified => write!(f, "{}", fl!("modified")),
              Self::Size => write!(f, "{}", fl!("size")),
              Self::TrashedOn => write!(f, "{}", fl!("trashed-on")),
@@ -316,7 +361,7 @@ index b226b39..003da4c 100644
          }
      }
  }
-@@ -484,6 +492,7 @@ impl HeadingOptions {
+@@ -484,6 +495,7 @@ impl HeadingOptions {
              Self::Modified.to_string(),
              Self::Size.to_string(),
              Self::TrashedOn.to_string(),
@@ -324,7 +369,7 @@ index b226b39..003da4c 100644
          ]
      }
  }
-@@ -542,6 +551,10 @@ pub struct Tab {
+@@ -542,6 +554,12 @@ pub struct Tab {
      pub item_view_size_opt: Cell<Option<Size>>,
      pub edit_location: Option<EditLocation>,
      pub edit_location_id: widget::Id,
@@ -332,20 +377,24 @@ index b226b39..003da4c 100644
 +    pub rename_inline: Option<(usize, String)>,
 +    pub rename_inline_id: widget::Id,
 +    last_click: Option<(usize, Instant)>,
++    hover_video: Option<PathBuf>,
++    hover_seq: Option<(PathBuf, Vec<widget::icon::Handle>, usize)>,
      pub history_i: usize,
      pub history: Vec<Location>,
      pub config: TabConfig,
-@@ -649,6 +662,9 @@ impl Tab {
+@@ -649,6 +667,11 @@ impl Tab {
              item_view_size_opt: Cell::new(None),
              edit_location: None,
              edit_location_id: widget::Id::unique(),
 +            rename_inline: None,
 +            rename_inline_id: widget::Id::unique(),
 +            last_click: None,
++            hover_video: None,
++            hover_seq: None,
              history_i: 0,
              history,
              config,
-@@ -1301,6 +1317,37 @@ impl Tab {
+@@ -1301,6 +1324,37 @@ impl Tab {
                  }
              }
              Message::Click(click_i_opt) => {
@@ -383,7 +432,7 @@ index b226b39..003da4c 100644
                  self.selected_clicked = false;
                  self.edit_location = None;
                  if click_i_opt.is_none() {
-@@ -1417,6 +1464,34 @@ impl Tab {
+@@ -1417,6 +1471,34 @@ impl Tab {
                      }
                  }
              }
@@ -418,7 +467,50 @@ index b226b39..003da4c 100644
              Message::Config(config) => {
                  // View is preserved for existing tabs
                  let view = self.config.view;
-@@ -2406,6 +2481,14 @@ impl Tab {
+@@ -2159,11 +2241,42 @@ impl Tab {
+             Message::HighlightDeactivate(i) => {
+                 if let Some(item) = self.items_opt.as_mut().and_then(|f| f.get_mut(i)) {
+                     item.state.highlighted = false;
++                    if item.path_opt().is_some() && item.path_opt() == self.hover_video.as_ref() {
++                        self.hover_video = None;
++                        self.hover_seq = None;
++                    }
+                 }
+             }
+             Message::HighlightActivate(i) => {
+                 if let Some(item) = self.items_opt.as_mut().and_then(|f| f.get_mut(i)) {
+                     item.state.highlighted = true;
++                    if item.mime.type_() == mime::VIDEO
++                        && let Some(path) = item.path_opt()
++                        && self.hover_video.as_ref() != Some(path)
++                    {
++                        self.hover_video = Some(path.clone());
++                        self.hover_seq = None;
++                    }
++                }
++            }
++            Message::HoverFrames(path, frames) => {
++                if self.hover_video.as_ref() == Some(&path) && !frames.is_empty() {
++                    let idx = self.hover_seq.as_ref().map_or(0, |s| s.2 % frames.len());
++                    let handles = frames
++                        .iter()
++                        .map(|f| {
++                            widget::icon::Handle::new(
++                                false,
++                                widget::icon::Data::Image(widget::image::Handle::from_path(f)),
++                            )
++                        })
++                        .collect();
++                    self.hover_seq = Some((path, handles, idx));
++                }
++            }
++            Message::HoverSeqTick => {
++                if let Some((_, frames, idx)) = &mut self.hover_seq {
++                    *idx = (*idx + 1) % frames.len().max(1);
+                 }
+             }
+             Message::Resize(viewport) => {
+@@ -2406,6 +2519,14 @@ impl Tab {
                      }
                  }
              }
@@ -433,7 +525,7 @@ index b226b39..003da4c 100644
              Message::ImageDecoded(path, width, height, pixels, display_size, generation) => {
                  // Create handle from pre-decoded RGBA data (fast!)
                  let handle = widget::image::Handle::from_rgba(width, height, pixels);
-@@ -2760,6 +2843,28 @@ impl Tab {
+@@ -2760,6 +2881,28 @@ impl Tab {
                      }
                  });
              }
@@ -462,11 +554,17 @@ index b226b39..003da4c 100644
          }
          Some(items)
      }
-@@ -2812,6 +2917,22 @@ impl Tab {
+@@ -2812,6 +2955,28 @@ impl Tab {
          container.into()
      }
  
 +    /// DepOS: text input shown in place of an item's name while renaming it.
++    /// Current frame of the hover sequence for this item, if it is being previewed.
++    fn hover_frame(&self, item: &Item) -> Option<widget::icon::Handle> {
++        let (path, frames, idx) = self.hover_seq.as_ref()?;
++        (item.path_opt() == Some(path)).then(|| frames.get(*idx).cloned()).flatten()
++    }
++
 +    fn rename_inline_view(&self, i: usize) -> Option<Element<'static, Message>> {
 +        let (ri, value) = self.rename_inline.as_ref()?;
 +        if *ri != i {
@@ -485,7 +583,22 @@ index b226b39..003da4c 100644
      pub fn gallery_view(&self) -> Element<'_, Message> {
          let cosmic_theme::Spacing {
              space_xxs,
-@@ -3500,6 +3621,9 @@ impl Tab {
+@@ -3486,9 +3651,11 @@ impl Tab {
+                     //TODO: one focus group per grid item (needs custom widget)
+                     let buttons: Vec<Element<Message>> = vec![
+                         widget::button::custom(
+-                            widget::icon::icon(item.icon_handle_grid.clone())
+-                                .content_fit(ContentFit::Contain)
+-                                .size(icon_sizes.grid()),
++                            widget::icon::icon(
++                                self.hover_frame(item).unwrap_or_else(|| item.icon_handle_grid.clone()),
++                            )
++                            .content_fit(ContentFit::Contain)
++                            .size(icon_sizes.grid()),
+                         )
+                         .padding(space_xxxs)
+                         .class(button_style(
+@@ -3500,6 +3667,9 @@ impl Tab {
                              false,
                          ))
                          .into(),
@@ -495,7 +608,7 @@ index b226b39..003da4c 100644
                          widget::tooltip(
                              widget::button::custom(Item::grid_display_name(&item.display_name))
                                  .id(item.state.button_id.clone())
-@@ -3515,7 +3639,8 @@ impl Tab {
+@@ -3515,7 +3685,8 @@ impl Tab {
                              widget::text::body(&item.name),
                              widget::tooltip::Position::Bottom,
                          )
@@ -505,7 +618,12 @@ index b226b39..003da4c 100644
                      ];
  
                      let mut column = widget::column::with_capacity(buttons.len())
-@@ -3921,9 +4046,11 @@ impl Tab {
+@@ -3917,13 +4088,15 @@ impl Tab {
+                         .spacing(space_xxs)
+                     } else {
+                         widget::row::with_children([
+-                            widget::icon::icon(item.icon_handle_list.clone())
++                            widget::icon::icon(self.hover_frame(item).unwrap_or_else(|| item.icon_handle_list.clone()))
                                  .content_fit(ContentFit::Contain)
                                  .size(icon_size)
                                  .into(),
@@ -520,7 +638,54 @@ index b226b39..003da4c 100644
                              widget::text::body(modified_text.clone())
                                  .width(Length::Fixed(modified_width))
                                  .into(),
-@@ -4793,6 +4920,7 @@ impl Tab {
+@@ -4617,7 +4790,45 @@ impl Tab {
+     pub fn subscription(&self, preview: bool) -> Subscription<Message> {
+         //TODO: how many thumbnail loads should be in flight at once?
+         let jobs = self.thumb_config.jobs.get() as usize;
+-        let mut subscriptions = Vec::with_capacity(jobs + 3);
++        let mut subscriptions = Vec::with_capacity(jobs + 5);
++
++        // DepOS: hover frame sequence (generated after a short hover, cached on disk)
++        if let Some(path) = &self.hover_video {
++            #[derive(Clone)]
++            struct HoverKey(PathBuf);
++            impl Hash for HoverKey {
++                fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
++                    "depos-hover-seq".hash(state);
++                    self.0.hash(state);
++                }
++            }
++            subscriptions.push(Subscription::run_with(HoverKey(path.clone()), |key| {
++                let path = key.0.clone();
++                stream::channel(1, move |mut output: futures::channel::mpsc::Sender<_>| async move {
++                    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
++                    let mut frames = Vec::new();
++                    for n in 0..crate::item::HOVER_FRAMES {
++                        let p = path.clone();
++                        let frame = tokio::task::spawn_blocking(move || crate::item::video_frame(&p, n))
++                            .await
++                            .ok()
++                            .flatten();
++                        if let Some(f) = frame {
++                            frames.push(f);
++                            if output.send(Message::HoverFrames(path.clone(), frames.clone())).await.is_err() {
++                                return;
++                            }
++                        }
++                    }
++                    std::future::pending().await
++                })
++            }));
++        }
++        if self.hover_seq.as_ref().is_some_and(|s| s.1.len() > 1) {
++            subscriptions.push(
++                cosmic::iced::time::every(std::time::Duration::from_millis(650)).map(|_| Message::HoverSeqTick),
++            );
++        }
+ 
+         if let Some(items) = &self.items_opt {
+             //TODO: move to function
+@@ -4793,6 +5004,7 @@ impl Tab {
                                          crate::operation::actively_writing_tick().await;
                                      }
  
@@ -528,7 +693,7 @@ index b226b39..003da4c 100644
                                      let message = {
                                          let path = path.clone();
  
-@@ -4832,6 +4960,18 @@ impl Tab {
+@@ -4832,6 +5044,18 @@ impl Tab {
                                          }
                                      }
  
