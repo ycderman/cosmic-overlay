@@ -29,3 +29,7 @@ RDEPEND+="
 DEPEND+="
 	>=dev-libs/expat-2.5.0
 "
+
+PATCHES=(
+	"${FILESDIR}"/cosmic-settings-no-kbd-backlight.patch
+)

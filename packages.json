@@ -147,6 +147,9 @@
       ],
       "depend": [
         ">=dev-libs/expat-2.5.0"
+      ],
+      "patches": [
+        "cosmic-settings-no-kbd-backlight.patch"
       ]
     },
     {

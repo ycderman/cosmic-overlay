@@ -1,0 +1,18 @@
+--- a/subscriptions/upower/src/lib.rs
++++ b/subscriptions/upower/src/lib.rs
+@@ -113,7 +113,14 @@
+                 match events().await {
+                     Ok(stream) => stream,
+                     Err(err) => {
+-                        log::error!("Error listening to KbdBacklight: {}", err);
++                        // DepOS: a desktop without a keyboard backlight has no
++                        // UPower KbdBacklight object; that is not an error.
++                        let msg = err.to_string();
++                        if msg.contains("UnknownMethod") || msg.contains("UnknownObject") {
++                            log::debug!("No keyboard backlight: {}", msg);
++                        } else {
++                            log::error!("Error listening to KbdBacklight: {}", msg);
++                        }
+                         futures::future::pending().await
+                     }
+                 }
