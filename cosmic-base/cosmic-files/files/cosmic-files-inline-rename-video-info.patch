@@ -24,7 +24,7 @@ index 375c1d9..d883b11 100644
                              self.context_page = ContextPage::NetworkDrive;
                              self.set_show_context(true);
 diff --git a/src/item/mod.rs b/src/item/mod.rs
-index 285ea7f..0f46b53 100644
+index 285ea7f..fe92a4a 100644
 --- a/src/item/mod.rs
 +++ b/src/item/mod.rs
 @@ -338,6 +338,7 @@ pub fn item_from_gvfs_info(path: PathBuf, file_info: gio::FileInfo, sizes: IconS
@@ -35,15 +35,18 @@ index 285ea7f..0f46b53 100644
          dir_size,
          state: ItemState::default(),
      }
-@@ -447,6 +448,7 @@ pub fn item_from_entry(
+@@ -446,7 +447,9 @@ pub fn item_from_entry(
+         icon_handle_grid,
          icon_handle_list,
          icon_handle_list_condensed,
-         thumbnail_opt: remote.then_some(ItemThumbnail::NotImage),
+-        thumbnail_opt: remote.then_some(ItemThumbnail::NotImage),
++        // DepOS: thumbnails on NFS/SMB too (LAN storage); mime stays extension-based when remote
++        thumbnail_opt: None,
 +        video_info: None,
          dir_size,
          state: ItemState::default(),
      }
-@@ -499,6 +501,8 @@ pub struct Item {
+@@ -499,6 +502,8 @@ pub struct Item {
      pub icon_handle_list: widget::icon::Handle,
      pub icon_handle_list_condensed: widget::icon::Handle,
      pub thumbnail_opt: Option<ItemThumbnail>,
@@ -52,7 +55,7 @@ index 285ea7f..0f46b53 100644
      pub dir_size: DirSize,
      pub state: ItemState,
  }
-@@ -628,6 +632,11 @@ impl Item {
+@@ -628,6 +633,11 @@ impl Item {
              "type",
              mime = self.mime.to_string()
          )));
@@ -64,7 +67,7 @@ index 285ea7f..0f46b53 100644
          let mut settings = Vec::new();
          if let Some(mime_app_cache) = mime_app_cache_opt {
              let mime_apps = mime_app_cache.get_apps_for_mime(&self.mime, false);
-@@ -891,3 +900,97 @@ pub enum SearchItem {
+@@ -891,3 +901,97 @@ pub enum SearchItem {
      Path(PathBuf, String, fs::Metadata),
      Trash(TrashItem, TrashItemSize),
  }
