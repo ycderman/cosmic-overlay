@@ -22,3 +22,4 @@ RDEPEND+="
 	>=x11-libs/pixman-0.43.4
 	media-libs/libdisplay-info:=
 "
+DEPEND="${RDEPEND}"

@@ -17,3 +17,4 @@ KEYWORDS="~amd64"
 RDEPEND+="
 	>=media-libs/dav1d-1.4.2
 "
+DEPEND="${RDEPEND}"

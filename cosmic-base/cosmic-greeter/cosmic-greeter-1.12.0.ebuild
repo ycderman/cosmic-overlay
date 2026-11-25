@@ -21,6 +21,7 @@ RDEPEND+="
 	>=media-libs/dav1d-1.4.2
 	>=sys-libs/pam-1.5.3-r1
 "
+DEPEND="${RDEPEND}"
 
 src_install() {
 	depos-cosmic_src_install

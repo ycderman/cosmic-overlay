@@ -17,3 +17,4 @@ KEYWORDS="~amd64"
 RDEPEND+="
 	=cosmic-base/cosmic-icons-${PV}
 "
+DEPEND="${RDEPEND}"

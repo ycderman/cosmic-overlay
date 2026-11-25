@@ -31,3 +31,4 @@ RDEPEND+="
 	=cosmic-base/xdg-desktop-portal-cosmic-${PV}
 	sys-apps/xdg-desktop-portal
 "
+DEPEND="${RDEPEND}"

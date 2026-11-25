@@ -18,3 +18,4 @@ RDEPEND+="
 	>=media-libs/libpulse-17.0
 	>=virtual/libudev-251-r2
 "
+DEPEND="${RDEPEND}"

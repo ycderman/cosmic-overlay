@@ -19,3 +19,4 @@ RDEPEND+="
 	>=media-video/pipewire-1.0.5
 	>=media-libs/mesa-24.0.4
 "
+DEPEND="${RDEPEND}"

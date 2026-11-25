@@ -17,3 +17,4 @@ KEYWORDS="~amd64"
 RDEPEND+="
 	>=media-libs/mesa-24.0.4
 "
+DEPEND="${RDEPEND}"

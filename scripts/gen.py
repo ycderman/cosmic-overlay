@@ -97,6 +97,8 @@ def main() -> None:
             lines = "\n".join(f"\t{d}" for d in p["rdepend"])
             op = "+=" if p["kind"] == "rust" else "="
             deps = f'\nRDEPEND{op}"\n{lines}\n"\n'
+            if p["kind"] == "rust":
+                deps += 'DEPEND="${RDEPEND}"\n'
         inherit = "".join(" " + i for i in p.get("inherit", []))
         install = ""
         if p.get("install"):

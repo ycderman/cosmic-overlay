@@ -20,3 +20,4 @@ RDEPEND+="
 	x11-themes/adw-gtk3
 	x11-themes/pop-icon-theme
 "
+DEPEND="${RDEPEND}"

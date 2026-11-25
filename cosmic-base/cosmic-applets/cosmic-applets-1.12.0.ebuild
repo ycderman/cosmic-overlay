@@ -18,3 +18,4 @@ RDEPEND+="
 	=cosmic-base/cosmic-icons-${PV}
 	>=sys-power/upower-1.90.0
 "
+DEPEND="${RDEPEND}"

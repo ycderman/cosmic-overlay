@@ -26,3 +26,4 @@ RDEPEND+="
 	x11-misc/xkeyboard-config
 	sys-apps/accountsservice
 "
+DEPEND="${RDEPEND}"

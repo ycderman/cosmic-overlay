@@ -150,6 +150,11 @@ depos-cosmic_src_install() {
 		meson_src_install
 		return
 	fi
+	if [[ ! -f justfile && ! -f Justfile && -f Makefile ]]; then
+		emake DESTDIR="${D}" prefix="${EPREFIX}/usr" install
+		einstalldocs
+		return
+	fi
 	local vars=( rootdir="${D}" )
 	# Not every justfile defines prefix (pop-launcher hardcodes /usr).
 	just --evaluate prefix &>/dev/null && vars+=( prefix="${EPREFIX}/usr" )
