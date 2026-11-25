@@ -413,6 +413,49 @@ index b226b39..cd98b75 100644
                                      std::future::pending().await
                                  },
                              )
+diff --git a/src/thumbnailer.rs b/src/thumbnailer.rs
+index 233766f..e5cf5dd 100644
+--- a/src/thumbnailer.rs
++++ b/src/thumbnailer.rs
+@@ -112,6 +112,10 @@ impl ThumbnailerCache {
+             }
+         }
+ 
++        // DepOS: thumbnailers may list legacy aliases (video/x-matroska) while file name
++        // globs give the canonical type (video/matroska); register both names.
++        let shared_mime_info = xdg_mime::SharedMimeInfo::new();
++
+         //TODO: handle directory specific behavior
+         for path in thumbnailer_paths {
+             let entry = match GenericEntry::from_path(&path) {
+@@ -145,13 +149,20 @@ impl ThumbnailerCache {
+             for mime_type in mime_types.split_terminator(';') {
+                 if let Ok(mime) = mime_type.parse::<Mime>() {
+                     log::trace!("thumbnailer {}={}", mime, path.display());
+-                    let apps = self
+-                        .cache
+-                        .entry(mime)
+-                        .or_insert_with(|| Vec::with_capacity(1));
+-                    apps.push(Thumbnailer {
+-                        exec: exec.to_string(),
+-                    });
++                    let canonical = shared_mime_info
++                        .unalias_mime_type(&mime)
++                        .filter(|c| *c != mime);
++                    for key in std::iter::once(mime).chain(canonical) {
++                        let apps = self
++                            .cache
++                            .entry(key)
++                            .or_insert_with(|| Vec::with_capacity(1));
++                        if !apps.iter().any(|t| t.exec == exec) {
++                            apps.push(Thumbnailer {
++                                exec: exec.to_string(),
++                            });
++                        }
++                    }
+                 }
+             }
+         }
 diff --git a/src/trash/gvfs.rs b/src/trash/gvfs.rs
 index 2d9a3a6..ca603f8 100644
 --- a/src/trash/gvfs.rs
