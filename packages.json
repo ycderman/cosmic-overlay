@@ -1,0 +1,251 @@
+{
+  "_comment": "COSMIC epoch components packaged by this overlay. Dependency lists adapted from fsvm88/cosmic-overlay (GPL-3).",
+  "packages": [
+    {
+      "pn": "cosmic-comp",
+      "repo": "cosmic-comp",
+      "kind": "rust",
+      "desc": "Compositor for the COSMIC desktop",
+      "rdepend": [
+        ">=media-libs/fontconfig-2.14.2-r3",
+        ">=media-libs/mesa-24.0.4",
+        ">=sys-auth/seatd-0.8.0",
+        ">=x11-libs/libxcb-1.16.1",
+        ">=x11-libs/pixman-0.43.4",
+        "media-libs/libdisplay-info:="
+      ]
+    },
+    {
+      "pn": "cosmic-session",
+      "repo": "cosmic-session",
+      "kind": "rust",
+      "desc": "Session manager for the COSMIC desktop",
+      "rdepend": [
+        "=cosmic-base/cosmic-comp-${PV}",
+        "=cosmic-base/cosmic-panel-${PV}",
+        "=cosmic-base/cosmic-applets-${PV}",
+        "=cosmic-base/cosmic-app-library-${PV}",
+        "=cosmic-base/cosmic-bg-${PV}",
+        "=cosmic-base/cosmic-launcher-${PV}",
+        "=cosmic-base/cosmic-notifications-${PV}",
+        "=cosmic-base/cosmic-osd-${PV}",
+        "=cosmic-base/cosmic-settings-${PV}",
+        "=cosmic-base/cosmic-settings-daemon-${PV}",
+        "=cosmic-base/cosmic-workspaces-epoch-${PV}",
+        "=cosmic-base/cosmic-idle-${PV}",
+        "=cosmic-base/cosmic-icons-${PV}",
+        "=cosmic-base/xdg-desktop-portal-cosmic-${PV}",
+        "sys-apps/xdg-desktop-portal"
+      ]
+    },
+    {
+      "pn": "cosmic-panel",
+      "repo": "cosmic-panel",
+      "kind": "rust",
+      "desc": "Panel for the COSMIC desktop",
+      "rdepend": []
+    },
+    {
+      "pn": "cosmic-applets",
+      "repo": "cosmic-applets",
+      "kind": "rust",
+      "desc": "Applets for the COSMIC panel",
+      "rdepend": [
+        "=cosmic-base/cosmic-icons-${PV}",
+        ">=sys-power/upower-1.90.0"
+      ]
+    },
+    {
+      "pn": "cosmic-app-library",
+      "repo": "cosmic-applibrary",
+      "kind": "rust",
+      "desc": "Application library for the COSMIC desktop",
+      "rdepend": []
+    },
+    {
+      "pn": "cosmic-bg",
+      "repo": "cosmic-bg",
+      "kind": "rust",
+      "desc": "Background service for the COSMIC desktop",
+      "rdepend": [
+        ">=media-libs/dav1d-1.4.2"
+      ]
+    },
+    {
+      "pn": "cosmic-launcher",
+      "repo": "cosmic-launcher",
+      "kind": "rust",
+      "desc": "Launcher for the COSMIC desktop",
+      "rdepend": [
+        "=cosmic-base/pop-launcher-${PV}"
+      ]
+    },
+    {
+      "pn": "pop-launcher",
+      "repo": "launcher",
+      "kind": "rust",
+      "desc": "Modular IPC-based desktop launcher service",
+      "rdepend": [
+        "sci-libs/libqalculate",
+        ">=sys-apps/fd-9",
+        "sys-power/power-profiles-daemon"
+      ]
+    },
+    {
+      "pn": "cosmic-notifications",
+      "repo": "cosmic-notifications",
+      "kind": "rust",
+      "desc": "Notification daemon for the COSMIC desktop",
+      "rdepend": []
+    },
+    {
+      "pn": "cosmic-osd",
+      "repo": "cosmic-osd",
+      "kind": "rust",
+      "desc": "On-screen display for the COSMIC desktop",
+      "rdepend": [
+        ">=media-libs/libpulse-17.0",
+        ">=virtual/libudev-251-r2"
+      ]
+    },
+    {
+      "pn": "cosmic-settings",
+      "repo": "cosmic-settings",
+      "kind": "rust",
+      "desc": "Settings application for the COSMIC desktop",
+      "rdepend": [
+        "=cosmic-base/cosmic-icons-${PV}",
+        "=cosmic-base/cosmic-randr-${PV}",
+        ">=net-wireless/bluez-5.86",
+        ">=app-text/iso-codes-4.16.0",
+        ">=dev-libs/expat-2.5.0",
+        ">=dev-util/desktop-file-utils-0.27",
+        "media-fonts/fira-mono",
+        "media-fonts/fira-sans",
+        "x11-misc/xkeyboard-config",
+        "sys-apps/accountsservice"
+      ]
+    },
+    {
+      "pn": "cosmic-settings-daemon",
+      "repo": "cosmic-settings-daemon",
+      "kind": "rust",
+      "desc": "Settings daemon for the COSMIC desktop",
+      "rdepend": [
+        "media-sound/alsa-utils",
+        ">=media-sound/playerctl-2.3.1",
+        "x11-themes/adw-gtk3",
+        "x11-themes/pop-icon-theme"
+      ]
+    },
+    {
+      "pn": "cosmic-workspaces-epoch",
+      "repo": "cosmic-workspaces-epoch",
+      "kind": "rust",
+      "desc": "Workspaces overview for the COSMIC desktop",
+      "rdepend": [
+        ">=media-libs/mesa-24.0.4"
+      ]
+    },
+    {
+      "pn": "cosmic-greeter",
+      "repo": "cosmic-greeter",
+      "kind": "rust",
+      "desc": "Login greeter for the COSMIC desktop",
+      "rdepend": [
+        "=cosmic-base/cosmic-comp-${PV}",
+        "acct-user/cosmic-greeter",
+        ">=gui-libs/greetd-0.9.0",
+        ">=media-libs/dav1d-1.4.2",
+        ">=sys-libs/pam-1.5.3-r1"
+      ],
+      "inherit": [
+        "pam",
+        "systemd"
+      ],
+      "install": [
+        "systemd_dounit debian/cosmic-greeter.service debian/cosmic-greeter-daemon.service",
+        "insinto /etc/greetd",
+        "newins debian/cosmic-greeter.config cosmic-greeter.toml",
+        "newpamd debian/cosmic-greeter.pam cosmic-greeter"
+      ]
+    },
+    {
+      "pn": "cosmic-idle",
+      "repo": "cosmic-idle",
+      "kind": "rust",
+      "desc": "Idle daemon for the COSMIC desktop",
+      "rdepend": []
+    },
+    {
+      "pn": "cosmic-files",
+      "repo": "cosmic-files",
+      "kind": "rust",
+      "desc": "File manager for the COSMIC desktop",
+      "rdepend": [
+        "=cosmic-base/cosmic-icons-${PV}",
+        "x11-misc/xdg-utils",
+        ">=gnome-base/gvfs-1.48.0"
+      ]
+    },
+    {
+      "pn": "cosmic-term",
+      "repo": "cosmic-term",
+      "kind": "rust",
+      "desc": "Terminal for the COSMIC desktop",
+      "rdepend": [
+        "=cosmic-base/cosmic-icons-${PV}"
+      ]
+    },
+    {
+      "pn": "cosmic-edit",
+      "repo": "cosmic-edit",
+      "kind": "rust",
+      "desc": "Text editor for the COSMIC desktop",
+      "rdepend": []
+    },
+    {
+      "pn": "cosmic-screenshot",
+      "repo": "cosmic-screenshot",
+      "kind": "rust",
+      "desc": "Screenshot tool for the COSMIC desktop",
+      "rdepend": [
+        "=cosmic-base/xdg-desktop-portal-cosmic-${PV}"
+      ]
+    },
+    {
+      "pn": "cosmic-randr",
+      "repo": "cosmic-randr",
+      "kind": "rust",
+      "desc": "Display configuration for the COSMIC desktop",
+      "rdepend": []
+    },
+    {
+      "pn": "xdg-desktop-portal-cosmic",
+      "repo": "xdg-desktop-portal-cosmic",
+      "kind": "rust",
+      "desc": "XDG desktop portal backend for COSMIC",
+      "rdepend": [
+        "sys-apps/xdg-desktop-portal",
+        ">=media-video/pipewire-1.0.5",
+        ">=media-libs/mesa-24.0.4"
+      ]
+    },
+    {
+      "pn": "cosmic-icons",
+      "repo": "cosmic-icons",
+      "kind": "data",
+      "desc": "Icon theme for the COSMIC desktop",
+      "rdepend": [
+        "x11-themes/pop-icon-theme"
+      ]
+    },
+    {
+      "pn": "cosmic-sound-theme",
+      "repo": "cosmic-sound-theme",
+      "kind": "data",
+      "desc": "Sound theme for the COSMIC desktop",
+      "rdepend": []
+    }
+  ]
+}
