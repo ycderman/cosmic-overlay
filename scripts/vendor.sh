@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # Build "<pn>-<pv>.full.tar.zst": upstream tag + vendored Cargo dependencies.
-# Usage: vendor.sh <pn> <upstream-repo> <tag> <pv> <outdir>
+# Usage: vendor.sh <pn> <upstream-repo> <tag> <pv> <outdir> [owner]
 set -euo pipefail
-pn=$1 repo=$2 tag=$3 pv=$4 out=$5
+pn=$1 repo=$2 tag=$3 pv=$4 out=$5 owner=${6:-pop-os}
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 mkdir -p "$out"
 
 git clone --quiet --depth 1 --branch "$tag" --recurse-submodules --shallow-submodules \
-	"https://github.com/pop-os/${repo}.git" "$work/src"
+	"https://github.com/${owner}/${repo}.git" "$work/src"
 rm -rf "$work/src/.git"
 find "$work/src" -name .git -prune -exec rm -rf {} +
 

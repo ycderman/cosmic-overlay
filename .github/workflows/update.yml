@@ -55,10 +55,18 @@ jobs:
           rustup toolchain install stable --profile minimal
           mkdir -p dist
           gh release download "epoch-$PV" -D dist -p '*.full.tar.zst' 2>/dev/null || true
-          jq -r '.packages[] | "\(.pn) \(.repo)"' packages.json | while read -r pn repo; do
-            if [ -f "dist/$pn-$PV.full.tar.zst" ]; then echo "reuse $pn"; continue; fi
+          jq -r '.packages[] | "\(.pn) \(.repo) \(.owner // "pop-os") \(.tag // "") \(.pv // "")"' packages.json \
+          | while read -r pn repo owner tag own; do
+            if [ -n "$own" ]; then
+              rel="$pn-$own"; ppv="$own"
+              gh release download "$rel" -D dist -p '*.full.tar.zst' 2>/dev/null || true
+            else
+              rel="epoch-$PV"; ppv="$PV"; tag="epoch-$PV"
+            fi
+            if [ -f "dist/$pn-$ppv.full.tar.zst" ]; then echo "reuse $pn"; continue; fi
             echo "::group::$pn"
-            scripts/vendor.sh "$pn" "$repo" "epoch-$PV" "$PV" dist
+            scripts/vendor.sh "$pn" "$repo" "$tag" "$ppv" dist "$owner"
+            echo "$rel" > "dist/$pn-$ppv.release"
             echo "::endgroup::"
           done
 
@@ -68,13 +76,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PV: ${{ steps.epoch.outputs.pv }}
         run: |
-          if gh release view "epoch-$PV" >/dev/null 2>&1; then
-            gh release upload "epoch-$PV" dist/*.full.tar.zst --clobber
-          else
-            gh release create "epoch-$PV" dist/*.full.tar.zst \
-              --title "COSMIC epoch $PV" \
-              --notes "Upstream pop-os epoch-$PV tags with vendored Cargo dependencies."
-          fi
+          shopt -s nullglob
+          for f in dist/*.release; do
+            rel=$(cat "$f"); asset="${f%.release}.full.tar.zst"
+            if gh release view "$rel" >/dev/null 2>&1; then
+              gh release upload "$rel" "$asset" --clobber
+            else
+              gh release create "$rel" "$asset" --title "$rel" \
+                --notes "Upstream source with vendored Cargo dependencies."
+            fi
+          done
 
       - name: Generate ebuilds and commit
         if: steps.epoch.outputs.skip != '1'

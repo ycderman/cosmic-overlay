@@ -27,8 +27,8 @@ COSMIC_KIND="{kind}"
 inherit depos-cosmic{inherit}
 
 DESCRIPTION="{desc}"
-HOMEPAGE="https://github.com/pop-os/{repo}"
-SRC_URI="{repo_url}/releases/download/epoch-${{PV}}/${{P}}.full.tar.zst"
+HOMEPAGE="https://github.com/{owner}/{repo}"
+SRC_URI="{repo_url}/releases/download/{release}/${{P}}.full.tar.zst"
 
 LICENSE="GPL-3"
 SLOT="0"
@@ -86,7 +86,10 @@ def main() -> None:
 
     for p in pkgs:
         pn = p["pn"]
-        tarball = dist / f"{pn}-{pv}.full.tar.zst"
+        own = p.get("pv")  # independently versioned package (not an epoch component)
+        ppv = own or pv
+        release = f"{pn}-${{PV}}" if own else "epoch-${PV}"
+        tarball = dist / f"{pn}-{ppv}.full.tar.zst"
         if not tarball.exists():
             sys.exit(f"missing {tarball}")
         pkgdir = ROOT / "cosmic-base" / pn
@@ -100,13 +103,17 @@ def main() -> None:
         if p.get("depend"):
             lines = "\n".join(f"\t{d}" for d in p["depend"])
             deps += f'DEPEND+="\n{lines}\n"\n'
+        if p.get("patches"):
+            lines = "\n".join(f'\t"${{FILESDIR}}"/{x}' for x in p["patches"])
+            deps += f"\nPATCHES=(\n{lines}\n)\n"
         inherit = "".join(" " + i for i in p.get("inherit", []))
         install = ""
         if p.get("install"):
             body = "\n".join("\t" + l for l in p["install"])
             install = f"\nsrc_install() {{\n\tdepos-cosmic_src_install\n{body}\n}}\n"
-        (pkgdir / f"{pn}-{pv}.ebuild").write_text(EBUILD.format(
+        (pkgdir / f"{pn}-{ppv}.ebuild").write_text(EBUILD.format(
             kind=p["kind"], desc=p["desc"], repo=p["repo"], repo_url=REPO_URL,
+            owner=p.get("owner", "pop-os"), release=release,
             inherit=inherit, deps=deps, install=install))
 
         manifest = pkgdir / "Manifest"
@@ -119,13 +126,13 @@ def main() -> None:
                 '<?xml version="1.0" encoding="UTF-8"?>\n'
                 '<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">\n'
                 "<pkgmetadata>\n"
-                f'\t<upstream>\n\t\t<remote-id type="github">pop-os/{p["repo"]}</remote-id>\n\t</upstream>\n'
+                f'\t<upstream>\n\t\t<remote-id type="github">{p.get("owner", "pop-os")}/{p["repo"]}</remote-id>\n\t</upstream>\n'
                 "</pkgmetadata>\n")
         prune(pkgdir, pn)
 
     metadir = ROOT / "cosmic-base" / "cosmic-meta"
     metadir.mkdir(parents=True, exist_ok=True)
-    deps = "\n".join(f"\t=cosmic-base/{p['pn']}-${{PV}}" for p in pkgs)
+    deps = "\n".join(f"\tcosmic-base/{p['pn']}" if p.get("pv") else f"\t=cosmic-base/{p['pn']}-${{PV}}" for p in pkgs)
     (metadir / f"cosmic-meta-{pv}.ebuild").write_text(META.format(deps=deps))
     prune(metadir, "cosmic-meta")
 

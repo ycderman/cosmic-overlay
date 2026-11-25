@@ -1,0 +1,29 @@
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -30,6 +30,7 @@
+ mod freedesktop_screensaver;
+ 
+ // Delay between screen off and locking
++#[allow(dead_code)]
+ const LOCK_SCREEN_DELAY: Duration = Duration::from_millis(500);
+ 
+ #[derive(Debug)]
+@@ -160,15 +161,11 @@
+             output.fade_surface = None;
+         }
+ 
+-        let timer = timer::Timer::from_duration(LOCK_SCREEN_DELAY);
+-        self.loop_handle
+-            .insert_source(timer, |_, _, state| {
+-                state.lock_screen();
+-                timer::TimeoutAction::Drop
+-            })
+-            .unwrap();
++        // DepOS: turning the screen off no longer locks the session.
++        // Manual locking (loginctl lock-session / Super+L) is unchanged.
+     }
+ 
++    #[allow(dead_code)]
+     fn lock_screen(&self) {
+         let command = self
+             .system_actions

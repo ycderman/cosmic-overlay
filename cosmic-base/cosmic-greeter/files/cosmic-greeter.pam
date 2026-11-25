@@ -4,4 +4,6 @@ auth       required     pam_succeed_if.so user != root quiet_success
 auth       include      system-login
 account    include      system-login
 password   include      system-login
+# Register greeter and user sessions with logind as Wayland sessions.
+session    required     pam_env.so readenv=0 conffile=/etc/security/cosmic-greeter-env.conf
 session    include      system-login

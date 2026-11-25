@@ -1,0 +1,16 @@
+--- a/src/logind.rs
++++ b/src/logind.rs
+@@ -114,10 +114,9 @@
+                         Ok(args) => {
+                             if args.start {
+                                 tracing::info!("logind prepare for sleep");
+-                                if let Some(inhibit) = inhibit_opt.take() {
+-                                    msg_tx.send(Message::Inhibit(Arc::new(inhibit))).await?;
+-                                }
+-                                msg_tx.send(Message::Lock).await?;
++                                // DepOS: do not lock when going to sleep; release the
++                                // delay inhibitor right away so suspend is not held up.
++                                drop(inhibit_opt.take());
+                             } else {
+                                 tracing::info!("logind resume");
+                                 if inhibit_opt.is_none() {
