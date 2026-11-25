@@ -30,6 +30,6 @@ src_install() {
 	depos-cosmic_src_install
 	systemd_dounit debian/cosmic-greeter.service debian/cosmic-greeter-daemon.service
 	insinto /etc/greetd
-	newins debian/cosmic-greeter.config cosmic-greeter.toml
-	newpamd debian/cosmic-greeter.pam cosmic-greeter
+	doins cosmic-greeter.toml
+	newpamd "${FILESDIR}"/cosmic-greeter.pam cosmic-greeter
 }
