@@ -13,3 +13,7 @@ SRC_URI="https://github.com/ycderman/cosmic-overlay/releases/download/epoch-${PV
 LICENSE="GPL-3"
 SLOT="0"
 KEYWORDS="~amd64"
+
+PATCHES=(
+	"${FILESDIR}"/cosmic-idle-no-lock-on-screen-off.patch
+)

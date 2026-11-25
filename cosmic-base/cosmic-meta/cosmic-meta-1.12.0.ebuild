@@ -34,4 +34,5 @@ RDEPEND="
 	=cosmic-base/xdg-desktop-portal-cosmic-${PV}
 	=cosmic-base/cosmic-icons-${PV}
 	=cosmic-base/cosmic-sound-theme-${PV}
+	cosmic-base/cosmic-ext-applet-minimon
 "

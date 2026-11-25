@@ -26,10 +26,16 @@ DEPEND+="
 	>=media-libs/dav1d-1.4.2
 "
 
+PATCHES=(
+	"${FILESDIR}"/cosmic-greeter-no-lock-on-sleep.patch
+)
+
 src_install() {
 	depos-cosmic_src_install
 	systemd_dounit debian/cosmic-greeter.service debian/cosmic-greeter-daemon.service
 	insinto /etc/greetd
 	doins cosmic-greeter.toml
 	newpamd "${FILESDIR}"/cosmic-greeter.pam cosmic-greeter
+	insinto /etc/security
+	doins "${FILESDIR}"/cosmic-greeter-env.conf
 }

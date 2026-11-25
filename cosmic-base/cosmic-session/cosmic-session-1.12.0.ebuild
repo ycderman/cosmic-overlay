@@ -31,3 +31,7 @@ RDEPEND+="
 	=cosmic-base/xdg-desktop-portal-cosmic-${PV}
 	sys-apps/xdg-desktop-portal
 "
+
+PATCHES=(
+	"${FILESDIR}"/cosmic-session-no-osk.patch
+)
