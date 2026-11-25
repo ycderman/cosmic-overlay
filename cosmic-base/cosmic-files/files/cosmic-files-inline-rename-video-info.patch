@@ -1,3 +1,29 @@
+diff --git a/i18n/en/cosmic_files.ftl b/i18n/en/cosmic_files.ftl
+index 4400c08..4de6e4a 100644
+--- a/i18n/en/cosmic_files.ftl
++++ b/i18n/en/cosmic_files.ftl
+@@ -349,6 +349,8 @@ sort-by-name = Sort by name
+ sort-by-modified = Sort by modified
+ sort-by-size = Sort by size
+ sort-by-trashed = Sort by delete time
++sort-by-type = Sort by type
++file-type = Type
+ remove-from-recents = Remove from recents
+ 
+ ## Desktop
+diff --git a/i18n/tr/cosmic_files.ftl b/i18n/tr/cosmic_files.ftl
+index c27767d..c0e14a9 100644
+--- a/i18n/tr/cosmic_files.ftl
++++ b/i18n/tr/cosmic_files.ftl
+@@ -264,6 +264,8 @@ sort-by-name = Ada göre sırala
+ sort-by-modified = Düzenlenme tarihine göre sırala
+ sort-by-size = Boyuta göre sırala
+ sort-by-trashed = Silme tarihine göre sırala
++sort-by-type = Türe göre sırala
++file-type = Tür
+ 
+ ## Desktop
+ 
 diff --git a/src/app.rs b/src/app.rs
 index 375c1d9..d883b11 100644
 --- a/src/app.rs
@@ -165,6 +191,60 @@ index 285ea7f..fe92a4a 100644
 +    }
 +    (!info.is_empty()).then_some(info)
 +}
+diff --git a/src/menu.rs b/src/menu.rs
+index 5e8a2e8..f176dae 100644
+--- a/src/menu.rs
++++ b/src/menu.rs
+@@ -309,6 +309,7 @@ pub fn context_menu(
+                 children.push(sort_item(fl!("sort-by-name"), HeadingOptions::Name));
+                 children.push(sort_item(fl!("sort-by-modified"), HeadingOptions::Modified));
+                 children.push(sort_item(fl!("sort-by-size"), HeadingOptions::Size));
++                children.push(sort_item(fl!("sort-by-type"), HeadingOptions::Type));
+                 if matches!(tab.location, Location::Desktop(..)) {
+                     children.push(menu::Item::Divider);
+                     children.push(menu_item(
+@@ -352,6 +353,7 @@ pub fn context_menu(
+                 children.push(sort_item(fl!("sort-by-name"), HeadingOptions::Name));
+                 children.push(sort_item(fl!("sort-by-modified"), HeadingOptions::Modified));
+                 children.push(sort_item(fl!("sort-by-size"), HeadingOptions::Size));
++                children.push(sort_item(fl!("sort-by-type"), HeadingOptions::Type));
+             }
+         }
+         (_, Location::Network(..)) => {
+@@ -369,6 +371,7 @@ pub fn context_menu(
+                 children.push(sort_item(fl!("sort-by-name"), HeadingOptions::Name));
+                 children.push(sort_item(fl!("sort-by-modified"), HeadingOptions::Modified));
+                 children.push(sort_item(fl!("sort-by-size"), HeadingOptions::Size));
++                children.push(sort_item(fl!("sort-by-type"), HeadingOptions::Type));
+             }
+         }
+         (_, Location::Trash | Location::Search(SearchLocation::Trash, ..)) => {
+@@ -392,6 +395,7 @@ pub fn context_menu(
+                 children.push(sort_item(fl!("sort-by-name"), HeadingOptions::Name));
+                 children.push(sort_item(fl!("sort-by-trashed"), HeadingOptions::TrashedOn));
+                 children.push(sort_item(fl!("sort-by-size"), HeadingOptions::Size));
++                children.push(sort_item(fl!("sort-by-type"), HeadingOptions::Type));
+             }
+         }
+     }
+@@ -501,7 +505,7 @@ pub fn dialog_menu(
+                         tab::HeadingOptions::Size,
+                         false,
+                     ),
+-                    //TODO: sort by type
++                    sort_item(fl!("sort-by-type"), tab::HeadingOptions::Type, true),
+                 ],
+             ),
+         ),
+@@ -742,7 +746,7 @@ pub fn menu_bar<'a>(
+                             tab::HeadingOptions::Size,
+                             false,
+                         ),
+-                        //TODO: sort by type
++                        sort_item(fl!("sort-by-type"), tab::HeadingOptions::Type, true),
+                     ],
+                 ),
+             ],
 diff --git a/src/mounter/gvfs.rs b/src/mounter/gvfs.rs
 index 9e9c76d..285159b 100644
 --- a/src/mounter/gvfs.rs
@@ -190,7 +270,7 @@ index 481cecc..6517aed 100644
              state: ItemState::default(),
          });
 diff --git a/src/tab.rs b/src/tab.rs
-index b226b39..cd98b75 100644
+index b226b39..003da4c 100644
 --- a/src/tab.rs
 +++ b/src/tab.rs
 @@ -349,6 +349,7 @@ pub enum Command {
@@ -219,7 +299,32 @@ index b226b39..cd98b75 100644
      ToggleSort(HeadingOptions),
      Drop(Option<(Location, ClipboardPaste)>),
      DndHover(Location),
-@@ -542,6 +547,10 @@ pub struct Tab {
+@@ -464,6 +469,8 @@ pub enum HeadingOptions {
+     Modified,
+     Size,
+     TrashedOn,
++    // DepOS: sort by file type
++    Type,
+ }
+ 
+ impl fmt::Display for HeadingOptions {
+@@ -473,6 +480,7 @@ impl fmt::Display for HeadingOptions {
+             Self::Modified => write!(f, "{}", fl!("modified")),
+             Self::Size => write!(f, "{}", fl!("size")),
+             Self::TrashedOn => write!(f, "{}", fl!("trashed-on")),
++            Self::Type => write!(f, "{}", fl!("file-type")),
+         }
+     }
+ }
+@@ -484,6 +492,7 @@ impl HeadingOptions {
+             Self::Modified.to_string(),
+             Self::Size.to_string(),
+             Self::TrashedOn.to_string(),
++            Self::Type.to_string(),
+         ]
+     }
+ }
+@@ -542,6 +551,10 @@ pub struct Tab {
      pub item_view_size_opt: Cell<Option<Size>>,
      pub edit_location: Option<EditLocation>,
      pub edit_location_id: widget::Id,
@@ -230,7 +335,7 @@ index b226b39..cd98b75 100644
      pub history_i: usize,
      pub history: Vec<Location>,
      pub config: TabConfig,
-@@ -649,6 +658,9 @@ impl Tab {
+@@ -649,6 +662,9 @@ impl Tab {
              item_view_size_opt: Cell::new(None),
              edit_location: None,
              edit_location_id: widget::Id::unique(),
@@ -240,7 +345,7 @@ index b226b39..cd98b75 100644
              history_i: 0,
              history,
              config,
-@@ -1301,6 +1313,37 @@ impl Tab {
+@@ -1301,6 +1317,37 @@ impl Tab {
                  }
              }
              Message::Click(click_i_opt) => {
@@ -278,7 +383,7 @@ index b226b39..cd98b75 100644
                  self.selected_clicked = false;
                  self.edit_location = None;
                  if click_i_opt.is_none() {
-@@ -1417,6 +1460,34 @@ impl Tab {
+@@ -1417,6 +1464,34 @@ impl Tab {
                      }
                  }
              }
@@ -313,7 +418,7 @@ index b226b39..cd98b75 100644
              Message::Config(config) => {
                  // View is preserved for existing tabs
                  let view = self.config.view;
-@@ -2406,6 +2477,14 @@ impl Tab {
+@@ -2406,6 +2481,14 @@ impl Tab {
                      }
                  }
              }
@@ -328,7 +433,36 @@ index b226b39..cd98b75 100644
              Message::ImageDecoded(path, width, height, pixels, display_size, generation) => {
                  // Create handle from pre-decoded RGBA data (fast!)
                  let handle = widget::image::Handle::from_rgba(width, height, pixels);
-@@ -2812,6 +2891,22 @@ impl Tab {
+@@ -2760,6 +2843,28 @@ impl Tab {
+                     }
+                 });
+             }
++            HeadingOptions::Type => items.sort_by(|a, b| {
++                let by_type = || {
++                    check_reverse(
++                        a.1.mime
++                            .essence_str()
++                            .cmp(b.1.mime.essence_str())
++                            .then_with(|| {
++                                LANGUAGE_SORTER.compare(&a.1.display_name, &b.1.display_name)
++                            }),
++                        sort_direction,
++                    )
++                };
++                if folders_first {
++                    match (a.1.metadata.is_dir(), b.1.metadata.is_dir()) {
++                        (true, false) => Ordering::Less,
++                        (false, true) => Ordering::Greater,
++                        _ => by_type(),
++                    }
++                } else {
++                    by_type()
++                }
++            }),
+         }
+         Some(items)
+     }
+@@ -2812,6 +2917,22 @@ impl Tab {
          container.into()
      }
  
@@ -351,7 +485,7 @@ index b226b39..cd98b75 100644
      pub fn gallery_view(&self) -> Element<'_, Message> {
          let cosmic_theme::Spacing {
              space_xxs,
-@@ -3500,6 +3595,9 @@ impl Tab {
+@@ -3500,6 +3621,9 @@ impl Tab {
                              false,
                          ))
                          .into(),
@@ -361,7 +495,7 @@ index b226b39..cd98b75 100644
                          widget::tooltip(
                              widget::button::custom(Item::grid_display_name(&item.display_name))
                                  .id(item.state.button_id.clone())
-@@ -3515,7 +3613,8 @@ impl Tab {
+@@ -3515,7 +3639,8 @@ impl Tab {
                              widget::text::body(&item.name),
                              widget::tooltip::Position::Bottom,
                          )
@@ -371,7 +505,7 @@ index b226b39..cd98b75 100644
                      ];
  
                      let mut column = widget::column::with_capacity(buttons.len())
-@@ -3921,9 +4020,11 @@ impl Tab {
+@@ -3921,9 +4046,11 @@ impl Tab {
                                  .content_fit(ContentFit::Contain)
                                  .size(icon_size)
                                  .into(),
@@ -386,7 +520,7 @@ index b226b39..cd98b75 100644
                              widget::text::body(modified_text.clone())
                                  .width(Length::Fixed(modified_width))
                                  .into(),
-@@ -4793,6 +4894,7 @@ impl Tab {
+@@ -4793,6 +4920,7 @@ impl Tab {
                                          crate::operation::actively_writing_tick().await;
                                      }
  
@@ -394,7 +528,7 @@ index b226b39..cd98b75 100644
                                      let message = {
                                          let path = path.clone();
  
-@@ -4832,6 +4934,18 @@ impl Tab {
+@@ -4832,6 +4960,18 @@ impl Tab {
                                          }
                                      }
  
