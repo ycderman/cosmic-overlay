@@ -13,3 +13,7 @@ SRC_URI="https://github.com/ycderman/cosmic-overlay/releases/download/cosmic-ext
 LICENSE="GPL-3"
 SLOT="0"
 KEYWORDS="~amd64"
+
+PATCHES=(
+	"${FILESDIR}"/minimon-nvml-debug.patch
+)

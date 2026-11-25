@@ -1,0 +1,11 @@
+--- a/src/sensors/gpu/nvidia.rs
++++ b/src/sensors/gpu/nvidia.rs
+@@ -23,7 +23,7 @@
+         }
+ 
+         Err(error) => {
+-            warn!("Connection to NVML failed, reason: {error}");
++            log::debug!("Connection to NVML failed, reason: {error}");
+             Err(error)
+         }
+     }

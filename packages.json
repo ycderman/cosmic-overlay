@@ -301,7 +301,10 @@
       "pv": "1.3.0",
       "kind": "rust",
       "desc": "System monitor applet for the COSMIC panel",
-      "rdepend": []
+      "rdepend": [],
+      "patches": [
+        "minimon-nvml-debug.patch"
+      ]
     }
   ]
 }
