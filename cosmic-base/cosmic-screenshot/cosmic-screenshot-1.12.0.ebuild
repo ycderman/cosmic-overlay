@@ -17,4 +17,3 @@ KEYWORDS="~amd64"
 RDEPEND+="
 	=cosmic-base/xdg-desktop-portal-cosmic-${PV}
 "
-DEPEND="${RDEPEND}"

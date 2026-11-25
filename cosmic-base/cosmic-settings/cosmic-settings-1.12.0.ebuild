@@ -26,4 +26,6 @@ RDEPEND+="
 	x11-misc/xkeyboard-config
 	sys-apps/accountsservice
 "
-DEPEND="${RDEPEND}"
+DEPEND+="
+	>=dev-libs/expat-2.5.0
+"

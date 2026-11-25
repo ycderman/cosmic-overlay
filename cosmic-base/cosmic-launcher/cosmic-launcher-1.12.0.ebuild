@@ -17,4 +17,3 @@ KEYWORDS="~amd64"
 RDEPEND+="
 	=cosmic-base/pop-launcher-${PV}
 "
-DEPEND="${RDEPEND}"

@@ -13,6 +13,14 @@
         ">=x11-libs/libxcb-1.16.1",
         ">=x11-libs/pixman-0.43.4",
         "media-libs/libdisplay-info:="
+      ],
+      "depend": [
+        ">=media-libs/fontconfig-2.14.2-r3",
+        ">=media-libs/mesa-24.0.4",
+        ">=sys-auth/seatd-0.8.0",
+        ">=x11-libs/libxcb-1.16.1",
+        ">=x11-libs/pixman-0.43.4",
+        "media-libs/libdisplay-info:="
       ]
     },
     {
@@ -69,6 +77,9 @@
       "desc": "Background service for the COSMIC desktop",
       "rdepend": [
         ">=media-libs/dav1d-1.4.2"
+      ],
+      "depend": [
+        ">=media-libs/dav1d-1.4.2"
       ]
     },
     {
@@ -106,6 +117,9 @@
       "rdepend": [
         ">=media-libs/libpulse-17.0",
         ">=virtual/libudev-251-r2"
+      ],
+      "depend": [
+        ">=media-libs/libpulse-17.0"
       ]
     },
     {
@@ -124,6 +138,9 @@
         "media-fonts/fira-sans",
         "x11-misc/xkeyboard-config",
         "sys-apps/accountsservice"
+      ],
+      "depend": [
+        ">=dev-libs/expat-2.5.0"
       ]
     },
     {
@@ -144,6 +161,9 @@
       "kind": "rust",
       "desc": "Workspaces overview for the COSMIC desktop",
       "rdepend": [
+        ">=media-libs/mesa-24.0.4"
+      ],
+      "depend": [
         ">=media-libs/mesa-24.0.4"
       ]
     },
@@ -168,6 +188,10 @@
         "insinto /etc/greetd",
         "newins debian/cosmic-greeter.config cosmic-greeter.toml",
         "newpamd debian/cosmic-greeter.pam cosmic-greeter"
+      ],
+      "depend": [
+        ">=sys-libs/pam-1.5.3-r1",
+        ">=media-libs/dav1d-1.4.2"
       ]
     },
     {
@@ -228,6 +252,9 @@
       "rdepend": [
         "sys-apps/xdg-desktop-portal",
         ">=media-video/pipewire-1.0.5",
+        ">=media-libs/mesa-24.0.4"
+      ],
+      "depend": [
         ">=media-libs/mesa-24.0.4"
       ]
     },

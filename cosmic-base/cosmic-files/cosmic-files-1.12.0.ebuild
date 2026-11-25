@@ -19,4 +19,3 @@ RDEPEND+="
 	x11-misc/xdg-utils
 	>=gnome-base/gvfs-1.48.0
 "
-DEPEND="${RDEPEND}"

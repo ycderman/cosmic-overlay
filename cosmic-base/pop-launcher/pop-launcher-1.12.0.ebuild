@@ -19,4 +19,3 @@ RDEPEND+="
 	>=sys-apps/fd-9
 	sys-power/power-profiles-daemon
 "
-DEPEND="${RDEPEND}"
