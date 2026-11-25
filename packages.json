@@ -187,7 +187,8 @@
       ],
       "inherit": [
         "pam",
-        "systemd"
+        "systemd",
+        "tmpfiles"
       ],
       "install": [
         "systemd_dounit debian/cosmic-greeter.service debian/cosmic-greeter-daemon.service",
@@ -195,7 +196,8 @@
         "doins cosmic-greeter.toml",
         "newpamd \"${FILESDIR}\"/cosmic-greeter.pam cosmic-greeter",
         "insinto /etc/security",
-        "doins \"${FILESDIR}\"/cosmic-greeter-env.conf"
+        "doins \"${FILESDIR}\"/cosmic-greeter-env.conf",
+        "newtmpfiles \"${FILESDIR}\"/cosmic-greeter-state.tmpfiles cosmic-greeter-state.conf"
       ],
       "depend": [
         ">=sys-libs/pam-1.5.3-r1",

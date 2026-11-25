@@ -1,0 +1,4 @@
+# cosmic-settings-daemon reads greeter accessibility state from here, also after autologin
+d /run/cosmic-greeter/cosmic 0755 cosmic-greeter cosmic-greeter -
+d /run/cosmic-greeter/cosmic/com.system76.CosmicSettingsDaemon 0755 cosmic-greeter cosmic-greeter -
+d /run/cosmic-greeter/cosmic/com.system76.CosmicSettingsDaemon/v1 0755 cosmic-greeter cosmic-greeter -

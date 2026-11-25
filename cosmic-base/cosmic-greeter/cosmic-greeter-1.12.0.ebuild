@@ -4,7 +4,7 @@
 EAPI=8
 
 COSMIC_KIND="rust"
-inherit depos-cosmic pam systemd
+inherit depos-cosmic pam systemd tmpfiles
 
 DESCRIPTION="Login greeter for the COSMIC desktop"
 HOMEPAGE="https://github.com/pop-os/cosmic-greeter"
@@ -38,4 +38,10 @@ src_install() {
 	newpamd "${FILESDIR}"/cosmic-greeter.pam cosmic-greeter
 	insinto /etc/security
 	doins "${FILESDIR}"/cosmic-greeter-env.conf
+	newtmpfiles "${FILESDIR}"/cosmic-greeter-state.tmpfiles cosmic-greeter-state.conf
+}
+
+pkg_postinst() {
+	depos-cosmic_pkg_postinst
+	tmpfiles_process cosmic-greeter-state.conf
 }
