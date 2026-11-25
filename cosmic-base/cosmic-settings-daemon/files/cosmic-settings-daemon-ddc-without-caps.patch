@@ -1,0 +1,35 @@
+--- a/src/brightness_device.rs
++++ b/src/brightness_device.rs
+@@ -87,9 +87,9 @@
+                     displays = Display::enumerate();
+                 }
+                 for display in &mut displays {
+-                    if display.update_capabilities().is_err() {
+-                        continue;
+-                    }
++                    // DepOS: some monitors (LG UltraGear) do not return a DDC
++                    // capabilities string; VCP 0x10 still works, so try anyway.
++                    let _ = display.update_capabilities();
+ 
+                     if let Err(err) = display.handle.set_vcp_feature(BRIGHTNESS, brightness) {
+                         log::error!("Failed to set brightness: {err:?}");
+@@ -131,13 +131,12 @@
+                 return Ok(self.brightness_dcc.brightness.lock().unwrap().0.into());
+             }
+             for mut d in Display::enumerate() {
+-                if d.update_capabilities().is_err() {
+-                    continue;
+-                }
+-
+-                if let Some(feature) = d.info.mccs_database.get(BRIGHTNESS)
+-                    && let Ok(value) = d.handle.get_vcp_feature(feature.code)
+-                {
++                // DepOS: read VCP 0x10 directly when the capabilities string is missing.
++                let code = match d.update_capabilities() {
++                    Ok(()) => d.info.mccs_database.get(BRIGHTNESS).map(|f| f.code).unwrap_or(BRIGHTNESS),
++                    Err(_) => BRIGHTNESS,
++                };
++                if let Ok(value) = d.handle.get_vcp_feature(code) {
+                     return Ok(value.value() as u32);
+                 }
+             }

@@ -156,6 +156,9 @@
         ">=media-sound/playerctl-2.3.1",
         "x11-themes/adw-gtk3",
         "x11-themes/pop-icon-theme"
+      ],
+      "patches": [
+        "cosmic-settings-daemon-ddc-without-caps.patch"
       ]
     },
     {
