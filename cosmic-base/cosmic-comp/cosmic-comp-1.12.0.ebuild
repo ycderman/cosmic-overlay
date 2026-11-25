@@ -30,3 +30,7 @@ DEPEND+="
 	>=x11-libs/pixman-0.43.4
 	media-libs/libdisplay-info:=
 "
+
+PATCHES=(
+	"${FILESDIR}"/cosmic-comp-session-eof.patch
+)

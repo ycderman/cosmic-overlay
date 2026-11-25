@@ -1,0 +1,17 @@
+--- a/src/session.rs
++++ b/src/session.rs
+@@ -50,6 +50,14 @@
+                             Ok(PostAction::Continue)
+                         }
+                     },
++                    Err(cosmic_comp_ipc::Error::IO(err))
++                        if err.kind() == std::io::ErrorKind::UnexpectedEof =>
++                    {
++                        // DepOS: cosmic-session closes its end after reading the
++                        // environment; that is a normal shutdown of the channel.
++                        tracing::debug!("Session socket closed");
++                        Ok(PostAction::Remove)
++                    }
+                     Err(cosmic_comp_ipc::Error::IO(err)) => {
+                         error!(?err, "Error reading from session socket");
+                         Ok(PostAction::Remove)
