@@ -35,4 +35,5 @@ RDEPEND="
 	=cosmic-base/cosmic-icons-${PV}
 	=cosmic-base/cosmic-sound-theme-${PV}
 	cosmic-base/cosmic-ext-applet-minimon
+	cosmic-base/cosmic-ext-applet-external-monitor-brightness
 "
