@@ -1,0 +1,424 @@
+diff --git a/src/app.rs b/src/app.rs
+index 375c1d9..d883b11 100644
+--- a/src/app.rs
++++ b/src/app.rs
+@@ -2778,6 +2778,10 @@ impl Application for App {
+                 tab.edit_location = None;
+                 return Task::none();
+             }
++            if tab.rename_inline.is_some() {
++                tab.rename_inline = None;
++                return Task::none();
++            }
+ 
+             let had_focused_button = tab.select_focus_id().is_some();
+             if tab.select_none() {
+@@ -4467,6 +4471,9 @@ impl Application for App {
+                         tab::Command::Action(action) => {
+                             commands.push(self.update(action.message(Some(entity))));
+                         }
++                        tab::Command::Rename(from, to) => {
++                            commands.push(self.operation(Operation::Rename { from, to }));
++                        }
+                         tab::Command::AddNetworkDrive => {
+                             self.context_page = ContextPage::NetworkDrive;
+                             self.set_show_context(true);
+diff --git a/src/item/mod.rs b/src/item/mod.rs
+index 285ea7f..0f46b53 100644
+--- a/src/item/mod.rs
++++ b/src/item/mod.rs
+@@ -338,6 +338,7 @@ pub fn item_from_gvfs_info(path: PathBuf, file_info: gio::FileInfo, sizes: IconS
+         } else {
+             None
+         },
++        video_info: None,
+         dir_size,
+         state: ItemState::default(),
+     }
+@@ -447,6 +448,7 @@ pub fn item_from_entry(
+         icon_handle_list,
+         icon_handle_list_condensed,
+         thumbnail_opt: remote.then_some(ItemThumbnail::NotImage),
++        video_info: None,
+         dir_size,
+         state: ItemState::default(),
+     }
+@@ -499,6 +501,8 @@ pub struct Item {
+     pub icon_handle_list: widget::icon::Handle,
+     pub icon_handle_list_condensed: widget::icon::Handle,
+     pub thumbnail_opt: Option<ItemThumbnail>,
++    /// DepOS: video details (label, value) read with ffprobe
++    pub video_info: Option<Vec<(String, String)>>,
+     pub dir_size: DirSize,
+     pub state: ItemState,
+ }
+@@ -628,6 +632,11 @@ impl Item {
+             "type",
+             mime = self.mime.to_string()
+         )));
++        if let Some(video_info) = &self.video_info {
++            for (label, value) in video_info {
++                details = details.push(widget::selectable_text::body(format!("{label}: {value}")));
++            }
++        }
+         let mut settings = Vec::new();
+         if let Some(mime_app_cache) = mime_app_cache_opt {
+             let mime_apps = mime_app_cache.get_apps_for_mime(&self.mime, false);
+@@ -891,3 +900,97 @@ pub enum SearchItem {
+     Path(PathBuf, String, fs::Metadata),
+     Trash(TrashItem, TrashItemSize),
+ }
++
++/// DepOS: read video details with ffprobe (resolution, length, codecs, HDR, audio,
++/// subtitles). Returns label/value pairs for the preview pane; None if ffprobe fails.
++pub fn video_info(path: &std::path::Path) -> Option<Vec<(String, String)>> {
++    let output = std::process::Command::new("ffprobe")
++        .args([
++            "-v",
++            "error",
++            "-show_entries",
++            "format=duration,bit_rate:stream=codec_type,codec_name,profile,width,height,pix_fmt,color_transfer,r_frame_rate,channels,channel_layout:stream_tags=language",
++            "-of",
++            "compact=p=0",
++        ])
++        .arg(path)
++        .output()
++        .ok()?;
++    if !output.status.success() {
++        return None;
++    }
++    let text = String::from_utf8_lossy(&output.stdout);
++    let mut info = Vec::new();
++    let (mut video, mut audio, mut subs) = (Vec::new(), Vec::new(), Vec::new());
++    let (mut duration, mut bit_rate) = (None, None);
++    for line in text.lines() {
++        let fields: std::collections::HashMap<&str, &str> =
++            line.split('|').filter_map(|kv| kv.split_once('=')).collect();
++        let get = |k: &str| fields.get(k).copied().filter(|v| !v.is_empty() && *v != "N/A" && *v != "unknown");
++        match get("codec_type") {
++            Some("video") if get("width").is_some() => video.push(fields.clone()),
++            Some("audio") => audio.push(fields.clone()),
++            Some("subtitle") => subs.push(get("tag:language").unwrap_or("?").to_string()),
++            _ => {
++                if let Some(d) = get("duration") {
++                    duration = d.parse::<f64>().ok();
++                }
++                if let Some(b) = get("bit_rate") {
++                    bit_rate = b.parse::<f64>().ok();
++                }
++            }
++        }
++    }
++    fn val<'a>(f: &std::collections::HashMap<&'a str, &'a str>, k: &str) -> Option<&'a str> {
++        f.get(k).copied().filter(|v| !v.is_empty() && *v != "N/A" && *v != "unknown")
++    }
++    if let Some(v) = video.first() {
++        if let (Some(w), Some(h)) = (val(v, "width"), val(v, "height")) {
++            info.push(("Çözünürlük".to_string(), format!("{w}×{h}")));
++        }
++        let mut codec = val(v, "codec_name").unwrap_or("?").to_uppercase();
++        if let Some(p) = val(v, "profile") {
++            codec.push_str(&format!(" {p}"));
++        }
++        if let Some(pf) = val(v, "pix_fmt") {
++            let depth = if pf.contains("10") { "10 bit" } else if pf.contains("12") { "12 bit" } else { "8 bit" };
++            codec.push_str(&format!(", {depth}"));
++        }
++        match val(v, "color_transfer") {
++            Some("smpte2084") => codec.push_str(", HDR10 (PQ)"),
++            Some("arib-std-b67") => codec.push_str(", HLG"),
++            _ => {}
++        }
++        if let Some((n, d)) = val(v, "r_frame_rate").and_then(|r| r.split_once('/')) {
++            if let (Ok(n), Ok(d)) = (n.parse::<f64>(), d.parse::<f64>()) {
++                if d > 0.0 {
++                    codec.push_str(&format!(", {:.3} fps", n / d));
++                }
++            }
++        }
++        info.push(("Video".to_string(), codec));
++    }
++    if let Some(d) = duration {
++        let s = d.round() as u64;
++        info.push(("Süre".to_string(), format!("{} sa {:02} dk {:02} sn", s / 3600, s / 60 % 60, s % 60)));
++    }
++    if let Some(b) = bit_rate {
++        info.push(("Bit hızı".to_string(), format!("{:.1} Mbit/s", b / 1_000_000.0)));
++    }
++    for a in &audio {
++        let mut s = val(a, "codec_name").unwrap_or("?").to_uppercase();
++        if let Some(l) = val(a, "channel_layout") {
++            s.push_str(&format!(" {l}"));
++        } else if let Some(c) = val(a, "channels") {
++            s.push_str(&format!(" {c} kanal"));
++        }
++        if let Some(lang) = val(a, "tag:language") {
++            s.push_str(&format!(" ({lang})"));
++        }
++        info.push(("Ses".to_string(), s));
++    }
++    if !subs.is_empty() {
++        info.push(("Altyazı".to_string(), subs.join(", ")));
++    }
++    (!info.is_empty()).then_some(info)
++}
+diff --git a/src/mounter/gvfs.rs b/src/mounter/gvfs.rs
+index 9e9c76d..285159b 100644
+--- a/src/mounter/gvfs.rs
++++ b/src/mounter/gvfs.rs
+@@ -238,6 +238,7 @@ fn network_scan(uri: &str, sizes: IconSizes) -> Result<Vec<Item>, String> {
+             icon_handle_list,
+             icon_handle_list_condensed,
+             thumbnail_opt: Some(ItemThumbnail::NotImage),
++            video_info: None,
+             //TODO: scan directory size on gvfs mounts?
+             dir_size: DirSize::NotDirectory,
+             state: ItemState::default(),
+diff --git a/src/scan/desktop.rs b/src/scan/desktop.rs
+index 481cecc..6517aed 100644
+--- a/src/scan/desktop.rs
++++ b/src/scan/desktop.rs
+@@ -89,6 +89,7 @@ pub fn scan_desktop(
+             icon_handle_list,
+             icon_handle_list_condensed,
+             thumbnail_opt: Some(ItemThumbnail::NotImage),
++            video_info: None,
+             dir_size: DirSize::NotDirectory,
+             state: ItemState::default(),
+         });
+diff --git a/src/tab.rs b/src/tab.rs
+index b226b39..cd98b75 100644
+--- a/src/tab.rs
++++ b/src/tab.rs
+@@ -349,6 +349,7 @@ pub enum Command {
+     OpenInNewWindow(PathBuf),
+     OpenTrash,
+     Preview(PreviewKind),
++    Rename(PathBuf, PathBuf),
+     RunContextAction(usize),
+     SetOpenWith(Mime, String),
+     SetPermissions(PathBuf, u32),
+@@ -360,6 +361,9 @@ pub enum Command {
+ 
+ #[derive(Clone, Debug)]
+ pub enum Message {
++    RenameInlineCancel,
++    RenameInlineInput(String),
++    RenameInlineSubmit,
+     AddNetworkDrive,
+     AutoScroll(Option<f32>),
+     Click(Option<usize>),
+@@ -417,6 +421,7 @@ pub enum Message {
+     SetSort(HeadingOptions, bool),
+     TabComplete(PathBuf, Vec<(String, PathBuf)>),
+     Thumbnail(PathBuf, ItemThumbnail),
++    VideoInfo(PathBuf, Option<Vec<(String, String)>>),
+     ToggleSort(HeadingOptions),
+     Drop(Option<(Location, ClipboardPaste)>),
+     DndHover(Location),
+@@ -542,6 +547,10 @@ pub struct Tab {
+     pub item_view_size_opt: Cell<Option<Size>>,
+     pub edit_location: Option<EditLocation>,
+     pub edit_location_id: widget::Id,
++    /// DepOS: in-place rename (item index, edited name)
++    pub rename_inline: Option<(usize, String)>,
++    pub rename_inline_id: widget::Id,
++    last_click: Option<(usize, Instant)>,
+     pub history_i: usize,
+     pub history: Vec<Location>,
+     pub config: TabConfig,
+@@ -649,6 +658,9 @@ impl Tab {
+             item_view_size_opt: Cell::new(None),
+             edit_location: None,
+             edit_location_id: widget::Id::unique(),
++            rename_inline: None,
++            rename_inline_id: widget::Id::unique(),
++            last_click: None,
+             history_i: 0,
+             history,
+             config,
+@@ -1301,6 +1313,37 @@ impl Tab {
+                 }
+             }
+             Message::Click(click_i_opt) => {
++                // DepOS: a slow second click on the only selected item renames it in place
++                let rename_start = match (click_i_opt, &self.items_opt) {
++                    (Some(i), Some(items)) if !mod_shift && !mod_ctrl && matches!(self.mode, Mode::App) => {
++                        let only_this = items.get(i).is_some_and(|it| it.state.selected)
++                            && items.iter().filter(|it| it.state.selected).count() == 1;
++                        let slow_repeat = self.last_click.is_some_and(|(j, t)| {
++                            let dt = t.elapsed();
++                            j == i && dt >= Duration::from_millis(500) && dt <= Duration::from_secs(3)
++                        });
++                        only_this && slow_repeat
++                    }
++                    _ => false,
++                };
++                self.last_click = click_i_opt.map(|i| (i, Instant::now()));
++                if let Some((ri, _)) = self.rename_inline
++                    && click_i_opt != Some(ri)
++                {
++                    self.rename_inline = None;
++                }
++                if rename_start
++                    && let Some(i) = click_i_opt
++                    && let Some(item) = self.items_opt.as_ref().and_then(|items| items.get(i))
++                    && item.path_opt().is_some()
++                {
++                    self.rename_inline = Some((i, item.name.clone()));
++                    self.last_click = None;
++                    commands.push(Command::Iced(
++                        widget::text_input::focus(self.rename_inline_id.clone()).into(),
++                    ));
++                    return commands;
++                }
+                 self.selected_clicked = false;
+                 self.edit_location = None;
+                 if click_i_opt.is_none() {
+@@ -1417,6 +1460,34 @@ impl Tab {
+                     }
+                 }
+             }
++            Message::RenameInlineInput(name) => {
++                if let Some((_, value)) = &mut self.rename_inline {
++                    *value = name;
++                }
++            }
++            Message::RenameInlineCancel => {
++                self.rename_inline = None;
++            }
++            Message::RenameInlineSubmit => {
++                if let Some((i, name)) = self.rename_inline.take() {
++                    let name = name.trim().to_string();
++                    if let Some(from) = self
++                        .items_opt
++                        .as_ref()
++                        .and_then(|items| items.get(i))
++                        .and_then(|item| item.path_opt().cloned())
++                        && !name.is_empty()
++                        && !name.contains('/')
++                        && name != "."
++                        && name != ".."
++                    {
++                        let to = from.with_file_name(&name);
++                        if to != from {
++                            commands.push(Command::Rename(from, to));
++                        }
++                    }
++                }
++            }
+             Message::Config(config) => {
+                 // View is preserved for existing tabs
+                 let view = self.config.view;
+@@ -2406,6 +2477,14 @@ impl Tab {
+                     }
+                 }
+             }
++            Message::VideoInfo(path, info) => {
++                if let Some(ref mut items) = self.items_opt {
++                    let location = Location::Path(path);
++                    if let Some(item) = items.iter_mut().find(|item| item.location_opt.as_ref() == Some(&location)) {
++                        item.video_info = info;
++                    }
++                }
++            }
+             Message::ImageDecoded(path, width, height, pixels, display_size, generation) => {
+                 // Create handle from pre-decoded RGBA data (fast!)
+                 let handle = widget::image::Handle::from_rgba(width, height, pixels);
+@@ -2812,6 +2891,22 @@ impl Tab {
+         container.into()
+     }
+ 
++    /// DepOS: text input shown in place of an item's name while renaming it.
++    fn rename_inline_view(&self, i: usize) -> Option<Element<'static, Message>> {
++        let (ri, value) = self.rename_inline.as_ref()?;
++        if *ri != i {
++            return None;
++        }
++        Some(
++            widget::text_input("", value.clone())
++                .id(self.rename_inline_id.clone())
++                .on_input(Message::RenameInlineInput)
++                .on_submit(|_| Message::RenameInlineSubmit)
++                .width(Length::Fill)
++                .into(),
++        )
++    }
++
+     pub fn gallery_view(&self) -> Element<'_, Message> {
+         let cosmic_theme::Spacing {
+             space_xxs,
+@@ -3500,6 +3595,9 @@ impl Tab {
+                             false,
+                         ))
+                         .into(),
++                        if let Some(input) = self.rename_inline_view(i) {
++                            input
++                        } else {
+                         widget::tooltip(
+                             widget::button::custom(Item::grid_display_name(&item.display_name))
+                                 .id(item.state.button_id.clone())
+@@ -3515,7 +3613,8 @@ impl Tab {
+                             widget::text::body(&item.name),
+                             widget::tooltip::Position::Bottom,
+                         )
+-                        .into(),
++                        .into()
++                        },
+                     ];
+ 
+                     let mut column = widget::column::with_capacity(buttons.len())
+@@ -3921,9 +4020,11 @@ impl Tab {
+                                 .content_fit(ContentFit::Contain)
+                                 .size(icon_size)
+                                 .into(),
+-                            Item::list_display_name(item.display_name.clone())
+-                                .width(Length::Fill)
+-                                .into(),
++                            self.rename_inline_view(i).unwrap_or_else(|| {
++                                Item::list_display_name(item.display_name.clone())
++                                    .width(Length::Fill)
++                                    .into()
++                            }),
+                             widget::text::body(modified_text.clone())
+                                 .width(Length::Fixed(modified_width))
+                                 .into(),
+@@ -4793,6 +4894,7 @@ impl Tab {
+                                         crate::operation::actively_writing_tick().await;
+                                     }
+ 
++                                    let is_video = mime.type_() == mime::VIDEO;
+                                     let message = {
+                                         let path = path.clone();
+ 
+@@ -4832,6 +4934,18 @@ impl Tab {
+                                         }
+                                     }
+ 
++                                    // DepOS: video details for the preview pane
++                                    if is_video {
++                                        let probe_path = path.clone();
++                                        let info = tokio::task::spawn_blocking(move || {
++                                            crate::item::video_info(&probe_path)
++                                        })
++                                        .await
++                                        .ok()
++                                        .flatten();
++                                        let _ = output.send(Message::VideoInfo(path.clone(), info)).await;
++                                    }
++
+                                     std::future::pending().await
+                                 },
+                             )
+diff --git a/src/trash/gvfs.rs b/src/trash/gvfs.rs
+index 2d9a3a6..ca603f8 100644
+--- a/src/trash/gvfs.rs
++++ b/src/trash/gvfs.rs
+@@ -143,6 +143,7 @@ pub fn item_from_trash_entry(entry: TrashItem, size: TrashItemSize, sizes: IconS
+         icon_handle_list,
+         icon_handle_list_condensed,
+         thumbnail_opt: (!can_thumbnail).then_some(ItemThumbnail::NotImage),
++        video_info: None,
+         dir_size: DirSize::NotDirectory,
+         state: ItemState::default(),
+     }

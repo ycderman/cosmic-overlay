@@ -234,7 +234,12 @@
       "rdepend": [
         "=cosmic-base/cosmic-icons-${PV}",
         "x11-misc/xdg-utils",
-        ">=gnome-base/gvfs-1.48.0"
+        ">=gnome-base/gvfs-1.48.0",
+        "media-video/ffmpeg",
+        "media-video/ffmpegthumbnailer"
+      ],
+      "patches": [
+        "cosmic-files-inline-rename-video-info.patch"
       ]
     },
     {

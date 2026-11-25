@@ -18,4 +18,10 @@ RDEPEND+="
 	=cosmic-base/cosmic-icons-${PV}
 	x11-misc/xdg-utils
 	>=gnome-base/gvfs-1.48.0
+	media-video/ffmpeg
+	media-video/ffmpegthumbnailer
 "
+
+PATCHES=(
+	"${FILESDIR}"/cosmic-files-inline-rename-video-info.patch
+)
