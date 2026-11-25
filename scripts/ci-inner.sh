@@ -47,5 +47,3 @@ emerge --nodeps --buildpkg "$atom"
 echo "::endgroup::"
 
 
-# Artifact names may not contain ':'.
-for f in /out/logs/*; do mv "$f" "${f//:/_}"; done
