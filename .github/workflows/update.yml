@@ -49,10 +49,14 @@ jobs:
       - name: Vendor sources
         if: steps.epoch.outputs.skip != '1'
         env:
+          GH_TOKEN: ${{ github.token }}
           PV: ${{ steps.epoch.outputs.pv }}
         run: |
           rustup toolchain install stable --profile minimal
+          mkdir -p dist
+          gh release download "epoch-$PV" -D dist -p '*.full.tar.zst' 2>/dev/null || true
           jq -r '.packages[] | "\(.pn) \(.repo)"' packages.json | while read -r pn repo; do
+            if [ -f "dist/$pn-$PV.full.tar.zst" ]; then echo "reuse $pn"; continue; fi
             echo "::group::$pn"
             scripts/vendor.sh "$pn" "$repo" "epoch-$PV" "$PV" dist
             echo "::endgroup::"
@@ -85,6 +89,7 @@ jobs:
             echo "nothing to commit"
           else
             git commit -m "cosmic-base: update to epoch $PV"
+            git pull --rebase
             git push
           fi
 
