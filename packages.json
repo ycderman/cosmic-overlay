@@ -297,21 +297,6 @@
       "kind": "rust",
       "desc": "System monitor applet for the COSMIC panel",
       "rdepend": []
-    },
-    {
-      "pn": "cosmic-ext-applet-external-monitor-brightness",
-      "repo": "cosmic-ext-applet-external-monitor-brightness",
-      "owner": "cosmic-utils",
-      "tag": "b068d5c4c2e604f79d48060cb2a53c926165bf4e",
-      "pv": "0.0.1_p20260912",
-      "kind": "rust",
-      "desc": "COSMIC panel applet for external monitor brightness (DDC/CI)",
-      "rdepend": [
-        "app-misc/ddcutil"
-      ],
-      "patches": [
-        "external-monitor-brightness-no-git.patch"
-      ]
     }
   ]
 }

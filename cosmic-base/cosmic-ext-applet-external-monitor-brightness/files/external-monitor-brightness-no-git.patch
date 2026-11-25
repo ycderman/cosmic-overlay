@@ -1,5 +1,0 @@
---- a/justfile
-+++ b/justfile
-@@ -1,1 +1,1 @@
--export EXTERNAL_MONITOR_BRIGHTNESS_COMMIT := `git rev-parse --short HEAD`
-+export EXTERNAL_MONITOR_BRIGHTNESS_COMMIT := "b068d5c"
