@@ -111,6 +111,9 @@ def main() -> None:
         if p.get("install"):
             body = "\n".join("\t" + l for l in p["install"])
             install = f"\nsrc_install() {{\n\tdepos-cosmic_src_install\n{body}\n}}\n"
+        if p.get("postinst"):
+            body = "\n".join("\t" + l for l in p["postinst"])
+            install += f"\npkg_postinst() {{\n\tdepos-cosmic_pkg_postinst\n{body}\n}}\n"
         (pkgdir / f"{pn}-{ppv}.ebuild").write_text(EBUILD.format(
             kind=p["kind"], desc=p["desc"], repo=p["repo"], repo_url=REPO_URL,
             owner=p.get("owner", "pop-os"), release=release,

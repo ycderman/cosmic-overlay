@@ -205,6 +205,9 @@
       ],
       "patches": [
         "cosmic-greeter-no-lock-on-sleep.patch"
+      ],
+      "postinst": [
+        "tmpfiles_process cosmic-greeter-state.conf"
       ]
     },
     {
