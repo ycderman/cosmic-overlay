@@ -7,8 +7,15 @@ work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 mkdir -p "$out"
 
-git clone --quiet --depth 1 --branch "$tag" --recurse-submodules --shallow-submodules \
-	"https://github.com/${owner}/${repo}.git" "$work/src"
+if [[ $tag =~ ^[0-9a-f]{40}$ ]]; then
+	git init --quiet "$work/src"
+	git -C "$work/src" fetch --quiet --depth 1 "https://github.com/${owner}/${repo}.git" "$tag"
+	git -C "$work/src" checkout --quiet FETCH_HEAD
+	git -C "$work/src" submodule --quiet update --init --recursive --depth 1
+else
+	git clone --quiet --depth 1 --branch "$tag" --recurse-submodules --shallow-submodules \
+		"https://github.com/${owner}/${repo}.git" "$work/src"
+fi
 rm -rf "$work/src/.git"
 find "$work/src" -name .git -prune -exec rm -rf {} +
 
