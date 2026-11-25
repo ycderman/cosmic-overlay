@@ -243,7 +243,7 @@
     {
       "pn": "cosmic-sound-theme",
       "repo": "cosmic-sound-theme",
-      "kind": "data",
+      "kind": "meson",
       "desc": "Sound theme for the COSMIC desktop",
       "rdepend": []
     }

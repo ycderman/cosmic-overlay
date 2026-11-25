@@ -3,7 +3,7 @@
 
 EAPI=8
 
-COSMIC_KIND="data"
+COSMIC_KIND="meson"
 inherit depos-cosmic
 
 DESCRIPTION="Sound theme for the COSMIC desktop"

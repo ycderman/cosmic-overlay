@@ -26,7 +26,8 @@ _DEPOS_COSMIC_ECLASS=1
 # @ECLASS_VARIABLE: COSMIC_KIND
 # @PRE_INHERIT
 # @DESCRIPTION:
-# "rust" for Cargo projects, "data" for packages that only install files.
+# "rust" for Cargo projects built with just, "data" for justfile-only
+# installs, "meson" for meson projects.
 : "${COSMIC_KIND:=rust}"
 
 if [[ ${COSMIC_KIND} == rust ]]; then
@@ -38,13 +39,15 @@ if [[ ${COSMIC_KIND} == rust ]]; then
 	inherit llvm-r1
 fi
 
+[[ ${COSMIC_KIND} == meson ]] && inherit meson
+
 inherit edo flag-o-matic multiprocessing toolchain-funcs xdg
 
 BDEPEND="
 	app-arch/zstd
-	dev-build/just
 	virtual/pkgconfig
 "
+[[ ${COSMIC_KIND} == meson ]] || BDEPEND+=" dev-build/just"
 
 if [[ ${COSMIC_KIND} == rust ]]; then
 	IUSE="max-opt"
@@ -91,6 +94,10 @@ depos-cosmic_src_unpack() {
 # @DESCRIPTION:
 # Offline Cargo configuration and optimisation profile.
 depos-cosmic_src_configure() {
+	if [[ ${COSMIC_KIND} == meson ]]; then
+		meson_src_configure
+		return
+	fi
 	[[ ${COSMIC_KIND} == rust ]] || return 0
 
 	export CARGO_HOME="${T}/cargo-home"
@@ -98,6 +105,10 @@ depos-cosmic_src_configure() {
 	export CARGO_NET_OFFLINE=true
 	export CARGO_TERM_COLOR=never
 	export CARGO_TERM_VERBOSE=true
+	# vergen-based build scripts ask git for these; the tarball has no .git.
+	export VERGEN_GIT_SHA="epoch-${PV}"
+	export VERGEN_GIT_COMMIT_DATE="1970-01-01"
+	export VERGEN_GIT_COMMIT_TIMESTAMP="1970-01-01T00:00:00Z"
 
 	# Portage strips and splits debug info itself.
 	export CARGO_PROFILE_RELEASE_DEBUG=0
@@ -118,6 +129,10 @@ depos-cosmic_src_configure() {
 # @DESCRIPTION:
 # Build through the upstream justfile when it has a build-release recipe.
 depos-cosmic_src_compile() {
+	if [[ ${COSMIC_KIND} == meson ]]; then
+		meson_src_compile
+		return
+	fi
 	[[ ${COSMIC_KIND} == rust ]] || return 0
 
 	if just --summary 2>/dev/null | tr ' ' '\n' | grep -qx build-release; then
@@ -131,6 +146,10 @@ depos-cosmic_src_compile() {
 # @DESCRIPTION:
 # Install with the upstream justfile into ${D}.
 depos-cosmic_src_install() {
+	if [[ ${COSMIC_KIND} == meson ]]; then
+		meson_src_install
+		return
+	fi
 	edo just rootdir="${D}" prefix="${EPREFIX}/usr" install
 	einstalldocs
 }
