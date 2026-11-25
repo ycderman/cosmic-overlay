@@ -15,7 +15,7 @@ CONF
 
 cat >> /etc/portage/make.conf <<CONF
 MAKEOPTS="-j${jobs}"
-FEATURES="\${FEATURES} getbinpkg binpkg-request-signature buildpkg -news"
+FEATURES="\${FEATURES} getbinpkg buildpkg -news"
 EMERGE_DEFAULT_OPTS="--jobs=2 --load-average=${jobs} --binpkg-respect-use=y --with-bdeps=y --quiet-build=y --color=n"
 ACCEPT_LICENSE="*"
 PKGDIR="/out/binpkgs"
@@ -34,6 +34,9 @@ echo "dev-lang/rust" > /etc/portage/package.mask/rust
 
 getuto
 mkdir -p /out/logs
+# Binary host packages are still signature-checked through binrepos.conf (verify-signature = true);
+# packages built here are unsigned.
+grep -q "verify-signature" /etc/portage/binrepos.conf/*.conf || sed -i "/^\[/a verify-signature = true" /etc/portage/binrepos.conf/*.conf
 
 echo "::group::build dependencies"
 emerge --onlydeps --onlydeps-with-rdeps=n "$atom"
@@ -43,3 +46,6 @@ echo "::group::build $atom"
 emerge --nodeps --buildpkg "$atom"
 echo "::endgroup::"
 
+
+# Artifact names may not contain ':'.
+for f in /out/logs/*; do mv "$f" "${f//:/_}"; done

@@ -57,6 +57,9 @@ jobs:
           df -h /
       - name: Build in Gentoo container
         run: scripts/ci-build.sh "${{ matrix.atom }}"
+      - name: Sanitize file names
+        if: always()
+        run: sudo find out -name '*:*' -exec bash -c 'mv "$0" "${0//:/_}"' {} \; 2>/dev/null || true
       - name: Name artifact
         if: always()
         id: name
